@@ -108,6 +108,21 @@ func (mr *MockClusterGitRepoMockRecorder) GetCluster(ctx, application, cluster, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCluster", reflect.TypeOf((*MockClusterGitRepo)(nil).GetCluster), ctx, application, cluster, templateName)
 }
 
+// GetClusterTemplate mocks base method.
+func (m *MockClusterGitRepo) GetClusterTemplate(ctx context.Context, application, cluster string) (*gitrepo.ClusterTemplate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetClusterTemplate", ctx, application, cluster)
+	ret0, _ := ret[0].(*gitrepo.ClusterTemplate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetClusterTemplate indicates an expected call of GetClusterTemplate.
+func (mr *MockClusterGitRepoMockRecorder) GetClusterTemplate(ctx, application, cluster interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClusterTemplate", reflect.TypeOf((*MockClusterGitRepo)(nil).GetClusterTemplate), ctx, application, cluster)
+}
+
 // GetClusterValueFiles mocks base method.
 func (m *MockClusterGitRepo) GetClusterValueFiles(ctx context.Context, application, cluster string) ([]gitrepo.ClusterValueFile, error) {
 	m.ctrl.T.Helper()

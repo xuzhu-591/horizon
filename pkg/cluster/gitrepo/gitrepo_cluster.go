@@ -84,9 +84,9 @@ type ClusterTemplate struct {
 }
 
 type ReadFileParam struct {
-	retBytes []byte
-	err      error
-	fileName string
+	Bytes    []byte
+	Err      error
+	FileName string
 }
 
 // nolint
@@ -294,15 +294,15 @@ func (g *clusterGitRepo) GetClusterValueFiles(ctx context.Context,
 	pid := fmt.Sprintf("%v/%v/%v", g.clustersGroup.FullPath, application, cluster)
 	cases := []ReadFileParam{
 		{
-			fileName: common.GitopsFileBase,
+			FileName: common.GitopsFileBase,
 		}, {
-			fileName: common.GitopsFileEnv,
+			FileName: common.GitopsFileEnv,
 		}, {
-			fileName: common.GitopsFileApplication,
+			FileName: common.GitopsFileApplication,
 		}, {
-			fileName: common.GitopsFileTags,
+			FileName: common.GitopsFileTags,
 		}, {
-			fileName: common.GitopsFileSRE,
+			FileName: common.GitopsFileSRE,
 		},
 	}
 
@@ -311,20 +311,21 @@ func (g *clusterGitRepo) GetClusterValueFiles(ctx context.Context,
 	for i := 0; i < len(cases); i++ {
 		go func(index int) {
 			defer wg.Done()
-			cases[index].retBytes, cases[index].err = g.gitlabLib.GetFile(ctx, pid,
-				g.defaultBranch, cases[index].fileName)
-			if cases[index].err != nil {
-				log.Warningf(ctx, "get file %s error, err = %s", cases[index].fileName, cases[index].err.Error())
+			cases[index].Bytes, cases[index].Err = g.gitlabLib.GetFile(ctx, pid,
+				g.defaultBranch, cases[index].FileName)
+			if cases[index].Err != nil {
+				log.Warningf(ctx, "get file %s error, err = %s",
+					cases[index].FileName, cases[index].Err.Error())
 			}
 		}(i)
 	}
 	wg.Wait()
 
 	for i := 0; i < len(cases); i++ {
-		if cases[i].err != nil {
-			if _, ok := perror.Cause(cases[i].err).(*herrors.HorizonErrNotFound); !ok {
-				log.Errorf(ctx, "get cluster value file error, err = %s", cases[i].err.Error())
-				return nil, cases[i].err
+		if cases[i].Err != nil {
+			if _, ok := perror.Cause(cases[i].Err).(*herrors.HorizonErrNotFound); !ok {
+				log.Errorf(ctx, "get cluster value file error, err = %s", cases[i].Err.Error())
+				return nil, cases[i].Err
 			}
 		}
 	}
@@ -332,20 +333,20 @@ func (g *clusterGitRepo) GetClusterValueFiles(ctx context.Context,
 	// 2. check yaml format ok
 	var clusterValueFiles []ClusterValueFile
 	for _, oneCase := range cases {
-		if oneCase.err != nil {
-			if _, ok := perror.Cause(oneCase.err).(*herrors.HorizonErrNotFound); ok {
+		if oneCase.Err != nil {
+			if _, ok := perror.Cause(oneCase.Err).(*herrors.HorizonErrNotFound); ok {
 				continue
 			}
 		}
 		var out map[interface{}]interface{}
-		err = yaml.Unmarshal(oneCase.retBytes, &out)
+		err = yaml.Unmarshal(oneCase.Bytes, &out)
 		if err != nil {
-			err = perror.Wrapf(herrors.ErrParamInvalid, "yaml Unmarshal err, file = %s", oneCase.fileName)
+			err = perror.Wrapf(herrors.ErrParamInvalid, "yaml Unmarshal err, file = %s", oneCase.FileName)
 			break
 		}
 
 		clusterValueFiles = append(clusterValueFiles, ClusterValueFile{
-			FileName: oneCase.fileName,
+			FileName: oneCase.FileName,
 			Content:  out,
 		})
 	}
@@ -1058,25 +1059,25 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 	// 1. get all cluster files of the specified commit
 	readFileParams := []*ReadFileParam{
 		{
-			fileName: common.GitopsFileBase,
+			FileName: common.GitopsFileBase,
 		}, {
-			fileName: common.GitopsFileEnv,
+			FileName: common.GitopsFileEnv,
 		}, {
-			fileName: common.GitopsFileApplication,
+			FileName: common.GitopsFileApplication,
 		}, {
-			fileName: common.GitopsFileTags,
+			FileName: common.GitopsFileTags,
 		}, {
-			fileName: common.GitopsFileSRE,
+			FileName: common.GitopsFileSRE,
 		}, {
-			fileName: common.GitopsFilePipeline,
+			FileName: common.GitopsFilePipeline,
 		}, {
-			fileName: common.GitopsFilePipelineOutput,
+			FileName: common.GitopsFilePipelineOutput,
 		}, {
-			fileName: common.GitopsFileChart,
+			FileName: common.GitopsFileChart,
 		}, {
-			fileName: common.GitopsFileRestart,
+			FileName: common.GitopsFileRestart,
 		}, {
-			fileName: common.GitopsFileManifest,
+			FileName: common.GitopsFileManifest,
 		},
 	}
 
@@ -1085,7 +1086,7 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 
 	readFile := func(param *ReadFileParam) {
 		defer wgReadFile.Done()
-		param.retBytes, param.err = g.gitlabLib.GetFile(ctx, pid, commit, param.fileName)
+		param.Bytes, param.Err = g.gitlabLib.GetFile(ctx, pid, commit, param.FileName)
 	}
 	for _, param := range readFileParams {
 		go readFile(param)
@@ -1103,19 +1104,19 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 	// 3. create a commit to do rollback
 	var actions []gitlablib.CommitAction
 	for _, param := range readFileParams {
-		if param.fileName != common.GitopsFileManifest {
-			if param.err != nil {
-				return "", param.err
+		if param.FileName != common.GitopsFileManifest {
+			if param.Err != nil {
+				return "", param.Err
 			}
 			actions = append(actions, gitlablib.CommitAction{
 				Action:   gitlablib.FileUpdate,
-				FilePath: param.fileName,
-				Content:  string(param.retBytes),
+				FilePath: param.FileName,
+				Content:  string(param.Bytes),
 			})
 		} else {
-			if param.err != nil {
-				if _, ok := perror.Cause(param.err).(*herrors.HorizonErrNotFound); !ok {
-					return "", param.err
+			if param.Err != nil {
+				if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); !ok {
+					return "", param.Err
 				}
 			}
 			if actionForManifest := rollbackManifest(param, readCurrentManifestErr); actionForManifest != nil {
@@ -1375,25 +1376,25 @@ func marshal(b *[]byte, err *error, data interface{}) {
 }
 
 func rollbackManifest(param *ReadFileParam, err error) *gitlablib.CommitAction {
-	if param.err != nil {
+	if param.Err != nil {
 		if err != nil {
 			return nil
 		}
 		return &gitlablib.CommitAction{
 			Action:   gitlablib.FileDelete,
-			FilePath: param.fileName,
+			FilePath: param.FileName,
 		}
 	}
 	if err != nil {
 		return &gitlablib.CommitAction{
 			Action:   gitlablib.FileCreate,
-			FilePath: param.fileName,
-			Content:  string(param.retBytes),
+			FilePath: param.FileName,
+			Content:  string(param.Bytes),
 		}
 	}
 	return &gitlablib.CommitAction{
 		Action:   gitlablib.FileUpdate,
-		FilePath: param.fileName,
-		Content:  string(param.retBytes),
+		FilePath: param.FileName,
+		Content:  string(param.Bytes),
 	}
 }
