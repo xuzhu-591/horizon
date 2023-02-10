@@ -22,5 +22,6 @@ const (
 	GitopsGroupClusters          = "clusters"
 	GitopsGroupRecyclingClusters = "recycling-clusters"
 
-	GitopsKeyTags = "tags"
+	GitopsKeyTags         = "tags"
+	GitopsKeyDependencies = "dependencies"
 )

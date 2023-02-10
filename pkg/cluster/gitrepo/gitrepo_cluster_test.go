@@ -223,6 +223,11 @@ func Test(t *testing.T) {
 	assert.Equal(t, files.PipelineJSONBlob, pipelineJSONBlob)
 	assert.Equal(t, files.ApplicationJSONBlob, applicationJSONBlob)
 
+	template, err := r.GetClusterTemplate(ctx, application, cluster)
+	assert.Nil(t, err)
+	assert.Equal(t, template.Name, templateName)
+	assert.Equal(t, template.Release, "v1.0.0")
+
 	commit, err := r.GetConfigCommit(ctx, application, cluster)
 	assert.Nil(t, err)
 	t.Logf("%v", commit)
@@ -243,7 +248,8 @@ func Test(t *testing.T) {
 	assert.NotNil(t, repoInfo)
 	t.Logf("%v", repoInfo)
 
-	com, err := r.MergeBranch(ctx, application, cluster, 123)
+	var prID uint = 123
+	com, err := r.MergeBranch(ctx, application, cluster, GitOpsBranch, r.DefaultBranch(), &prID)
 	assert.Nil(t, err)
 	t.Logf("%v", com)
 
