@@ -218,8 +218,10 @@ func Test(t *testing.T) {
 
 	files, err := r.GetCluster(ctx, application, cluster, templateName)
 	assert.Nil(t, err)
+	t.Logf("%v", files.Manifest)
 	t.Logf("%v", files.PipelineJSONBlob)
 	t.Logf("%v", files.ApplicationJSONBlob)
+	assert.NotNil(t, files.Manifest)
 	assert.Equal(t, files.PipelineJSONBlob, pipelineJSONBlob)
 	assert.Equal(t, files.ApplicationJSONBlob, applicationJSONBlob)
 

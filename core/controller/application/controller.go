@@ -238,7 +238,7 @@ func (c *controller) CreateApplication(ctx context.Context, groupID uint,
 
 	// 3. create application in git repo
 	createRepoReq := gitrepo.CreateOrUpdateRequest{
-		Version:      "",
+		Version:      common.MetaVersion1,
 		Environment:  common.ApplicationRepoDefaultEnv,
 		BuildConf:    request.TemplateInput.Pipeline,
 		TemplateConf: request.TemplateInput.Application,
@@ -426,7 +426,7 @@ func (c *controller) UpdateApplication(ctx context.Context, id uint,
 		}
 
 		updateRepoReq := gitrepo.CreateOrUpdateRequest{
-			Version:      "",
+			Version:      common.MetaVersion1,
 			Environment:  common.ApplicationRepoDefaultEnv,
 			BuildConf:    request.TemplateInput.Pipeline,
 			TemplateConf: request.TemplateInput.Application,

@@ -110,6 +110,7 @@ func (c *controller) UpdateEnvTemplate(ctx context.Context,
 
 	// 3.1 update application's git repo if env is empty
 	updateReq := gitrepo.CreateOrUpdateRequest{
+		Version:      common.MetaVersion1,
 		Environment:  env,
 		BuildConf:    r.Pipeline,
 		TemplateConf: r.Application,

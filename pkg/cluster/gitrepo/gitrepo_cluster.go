@@ -230,7 +230,7 @@ func (g *clusterGitRepo) GetCluster(ctx context.Context,
 			return nil, nil
 		}
 		var pipelineValueParentName string
-		if manifest.Version == "" {
+		if manifest.Version == "" || manifest.Version == common.MetaVersion1 {
 			pipelineValueParentName = templateName
 		} else {
 			pipelineValueParentName = PipelineValueParent
@@ -444,6 +444,8 @@ func (g *clusterGitRepo) CreateCluster(ctx context.Context, params *CreateCluste
 	marshal(&tagsYAML, &err8, assembleTags(params.TemplateRelease.ChartName, params.Tags))
 	if params.BaseParams.Version != "" {
 		marshal(&manifestValueYAML, &err9, pkgcommon.Manifest{Version: params.BaseParams.Version})
+	} else {
+		marshal(&manifestValueYAML, &err9, pkgcommon.Manifest{Version: common.MetaVersion1})
 	}
 
 	chart, err := g.assembleChart(params.BaseParams)
@@ -479,6 +481,10 @@ func (g *clusterGitRepo) CreateCluster(ctx context.Context, params *CreateCluste
 				Action:   gitlablib.FileCreate,
 				FilePath: common.GitopsFileChart,
 				Content:  string(chartYAML),
+			}, {
+				Action:   gitlablib.FileCreate,
+				FilePath: common.GitopsFileManifest,
+				Content:  string(manifestValueYAML),
 			},
 			// create GitopsFilePipelineOutput file first
 			{
@@ -506,13 +512,6 @@ func (g *clusterGitRepo) CreateCluster(ctx context.Context, params *CreateCluste
 				Action:   gitlablib.FileCreate,
 				FilePath: common.GitopsFilePipeline,
 				Content:  string(pipelineYAML),
-			})
-		}
-		if manifestValueYAML != nil {
-			gitActions = append(gitActions, gitlablib.CommitAction{
-				Action:   gitlablib.FileCreate,
-				FilePath: common.GitopsFileManifest,
-				Content:  string(manifestValueYAML),
 			})
 		}
 		return gitActions
@@ -1092,36 +1091,20 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 	}
 	wgReadFile.Wait()
 
-	// 2. get manifest on gitops branch
-	_, readCurrentManifestErr := g.gitlabLib.GetFile(ctx, pid, GitOpsBranch, common.GitopsFileManifest)
-	if readCurrentManifestErr != nil {
-		if _, ok := perror.Cause(readCurrentManifestErr).(*herrors.HorizonErrNotFound); !ok {
-			return "", readCurrentManifestErr
-		}
-	}
-
-	// 3. create a commit to do rollback
+	// 2. create a commit to do rollback
 	var actions []gitlablib.CommitAction
 	for _, param := range readFileParams {
-		if param.FileName != common.GitopsFileManifest {
-			if param.Err != nil {
-				return "", param.Err
+		if param.Err != nil {
+			if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); ok && param.FileName == common.GitopsFileManifest {
+				continue
 			}
-			actions = append(actions, gitlablib.CommitAction{
-				Action:   gitlablib.FileUpdate,
-				FilePath: param.FileName,
-				Content:  string(param.Bytes),
-			})
-		} else {
-			if param.Err != nil {
-				if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); !ok {
-					return "", param.Err
-				}
-			}
-			if actionForManifest := rollbackManifest(param, readCurrentManifestErr); actionForManifest != nil {
-				actions = append(actions, *actionForManifest)
-			}
+			return "", param.Err
 		}
+		actions = append(actions, gitlablib.CommitAction{
+			Action:   gitlablib.FileUpdate,
+			FilePath: param.FileName,
+			Content:  string(param.Bytes),
+		})
 	}
 
 	commitMsg := angular.CommitMessage("cluster", angular.Subject{
@@ -1214,7 +1197,7 @@ func (g *clusterGitRepo) assembleApplicationValue(params *BaseParams) map[string
 func (g *clusterGitRepo) assemblePipelineValue(params *BaseParams) map[string]map[string]interface{} {
 	ret := make(map[string]map[string]interface{})
 	// the default version prefix pipeline value with template ChartName
-	if params.Version == "" {
+	if params.Version == "" || params.Version == common.MetaVersion1 {
 		ret[params.TemplateRelease.ChartName] = params.PipelineJSONBlob
 	} else {
 		ret[PipelineValueParent] = params.PipelineJSONBlob
