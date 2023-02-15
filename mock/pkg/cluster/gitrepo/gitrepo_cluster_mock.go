@@ -313,3 +313,18 @@ func (mr *MockClusterGitRepoMockRecorder) UpdateTags(ctx, application, cluster, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTags", reflect.TypeOf((*MockClusterGitRepo)(nil).UpdateTags), ctx, application, cluster, templateName, tags)
 }
+
+// UpgradeValuesFiles mocks base method.
+func (m *MockClusterGitRepo) UpgradeValuesFiles(ctx context.Context, param *gitrepo.UpgradeValuesParam) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpgradeValuesFiles", ctx, param)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpgradeValuesFiles indicates an expected call of UpgradeValuesFiles.
+func (mr *MockClusterGitRepoMockRecorder) UpgradeValuesFiles(ctx, param interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpgradeValuesFiles", reflect.TypeOf((*MockClusterGitRepo)(nil).UpgradeValuesFiles), ctx, param)
+}

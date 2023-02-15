@@ -1648,26 +1648,26 @@ func marshal(b *[]byte, err *error, data interface{}) {
 	}
 }
 
-func rollbackManifest(param *ReadFileParam, err error) *gitlablib.CommitAction {
-	if param.Err != nil {
-		if err != nil {
-			return nil
-		}
-		return &gitlablib.CommitAction{
-			Action:   gitlablib.FileDelete,
-			FilePath: param.FileName,
-		}
-	}
-	if err != nil {
-		return &gitlablib.CommitAction{
-			Action:   gitlablib.FileCreate,
-			FilePath: param.FileName,
-			Content:  string(param.Bytes),
-		}
-	}
-	return &gitlablib.CommitAction{
-		Action:   gitlablib.FileUpdate,
-		FilePath: param.FileName,
-		Content:  string(param.Bytes),
-	}
-}
+// func rollbackManifest(param *ReadFileParam, err error) *gitlablib.CommitAction {
+// 	if param.Err != nil {
+// 		if err != nil {
+// 			return nil
+// 		}
+// 		return &gitlablib.CommitAction{
+// 			Action:   gitlablib.FileDelete,
+// 			FilePath: param.FileName,
+// 		}
+// 	}
+// 	if err != nil {
+// 		return &gitlablib.CommitAction{
+// 			Action:   gitlablib.FileCreate,
+// 			FilePath: param.FileName,
+// 			Content:  string(param.Bytes),
+// 		}
+// 	}
+// 	return &gitlablib.CommitAction{
+// 		Action:   gitlablib.FileUpdate,
+// 		FilePath: param.FileName,
+// 		Content:  string(param.Bytes),
+// 	}
+// }
