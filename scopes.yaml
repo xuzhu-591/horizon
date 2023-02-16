@@ -160,6 +160,7 @@ roles:
           - clusters/buildstatus
           - clusters/step
           - clusters/resourcetree
+          - clusters/upgrade
         verbs:
           - "*"
         scopes:

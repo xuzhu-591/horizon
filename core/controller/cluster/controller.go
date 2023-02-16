@@ -104,7 +104,7 @@ type Controller interface {
 	GetClusterBuildStatus(ctx context.Context, clusterID uint) (*BuildStatusResponse, error)
 	GetResourceTree(ctx context.Context, clusterID uint) (*GetResourceTreeResponse, error)
 	GetStep(ctx context.Context, clusterID uint) (resp *GetStepResponse, err error)
-	UpgradeToV2(ctx context.Context, clusterID uint) (string, error)
+	Upgrade(ctx context.Context, clusterID uint) error
 }
 
 type controller struct {
