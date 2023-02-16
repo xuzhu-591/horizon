@@ -666,6 +666,7 @@ func test(t *testing.T) {
 	}).AnyTimes()
 	imageName := "image"
 	clusterGitRepo.EXPECT().UpdatePipelineOutput(ctx, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("image-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().DefaultBranch().Return("master").AnyTimes()
 	cd.EXPECT().CreateCluster(ctx, gomock.Any()).Return(nil).AnyTimes()
 	cd.EXPECT().Pause(ctx, gomock.Any()).Return(nil).AnyTimes()
 	cd.EXPECT().Resume(ctx, gomock.Any()).Return(nil).AnyTimes()
@@ -818,8 +819,8 @@ func test(t *testing.T) {
 
 	clusterGitRepo.EXPECT().GetRestartTime(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
 		Return("", nil).AnyTimes()
-	clusterGitRepo.EXPECT().MergeBranch(ctx, gomock.Any(), gomock.Any(),
-		gomock.Any()).Return("newest-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().MergeBranch(ctx, gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any()).Return("newest-commit", nil).AnyTimes()
 	clusterGitRepo.EXPECT().GetRepoInfo(ctx, gomock.Any(), gomock.Any()).Return(&gitrepo.RepoInfo{
 		GitRepoURL: "ssh://xxxx.git",
 		ValueFiles: []string{"file1", "file2"},
@@ -848,8 +849,8 @@ func test(t *testing.T) {
 	newCtx := common.WithContextJWTTokenString(ctx, token)
 
 	clusterGitRepo.EXPECT().UpdatePipelineOutput(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("image-commit", nil).AnyTimes()
-	clusterGitRepo.EXPECT().MergeBranch(gomock.Any(), gomock.Any(), gomock.Any(),
-		gomock.Any()).Return("newest-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().MergeBranch(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+		gomock.Any(), gomock.Any()).Return("newest-commit", nil).AnyTimes()
 	clusterGitRepo.EXPECT().GetRepoInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(&gitrepo.RepoInfo{
 		GitRepoURL: "ssh://xxxx.git",
 		ValueFiles: []string{"file1", "file2"},
@@ -1026,6 +1027,11 @@ func test(t *testing.T) {
 	// test rollback
 	clusterGitRepo.EXPECT().Rollback(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
 		Return("rollback-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().GetClusterTemplate(ctx, application.Name, resp.Name).
+		Return(&gitrepo.ClusterTemplate{
+			Name:    resp.Template.Name,
+			Release: resp.Template.Release,
+		}, nil).AnyTimes()
 	// update status to 'ok'
 	err = manager.PipelinerunMgr.UpdateResultByID(ctx, buildDeployResp.PipelinerunID, &prmodels.Result{
 		Result: string(prmodels.StatusOK),

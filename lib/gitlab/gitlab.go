@@ -154,6 +154,7 @@ type FileAction string
 const (
 	FileCreate FileAction = "create"
 	FileUpdate FileAction = "update"
+	FileDelete FileAction = "delete"
 )
 
 // CommitAction represents a single file action within a commit.
