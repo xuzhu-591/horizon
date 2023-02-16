@@ -473,7 +473,6 @@ func TestUpgradeToV2(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, template.Name, targetTemplate)
 	assert.Equal(t, template.Release, targetRelease)
-
 }
 
 func TestHardDeleteCluster(t *testing.T) {

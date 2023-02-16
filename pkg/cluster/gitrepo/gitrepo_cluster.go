@@ -1106,7 +1106,8 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 	var actions []gitlablib.CommitAction
 	for _, param := range readFileParams {
 		if param.Err != nil {
-			if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); ok && param.FileName == common.GitopsFileManifest {
+			if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); ok &&
+				param.FileName == common.GitopsFileManifest {
 				continue
 			}
 			return "", param.Err
