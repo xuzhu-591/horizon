@@ -1332,6 +1332,10 @@ func (g *clusterGitRepo) UpgradeValuesFiles(ctx context.Context,
 	updatePipelineValue := func(oneCase *upgradeValueBytes) {
 		defer wgUpdateValue.Done()
 
+		if oneCase.in == nil {
+			return
+		}
+
 		var inMap map[string]map[string]interface{}
 		err = yaml.Unmarshal(oneCase.in, &inMap)
 		if err != nil {
@@ -1359,40 +1363,50 @@ func (g *clusterGitRepo) UpgradeValuesFiles(ctx context.Context,
 	updateApplicationValue := func(oneCase *upgradeValueBytes) {
 		defer wgUpdateValue.Done()
 
-		var inMap map[string]map[string]map[string]interface{}
+		if oneCase.in == nil {
+			return
+		}
+		var inMap map[string]map[string]interface{}
 		err = yaml.Unmarshal(oneCase.in, &inMap)
 		if err != nil {
 			oneCase.err = perror.Wrapf(herrors.ErrParamInvalid, "yaml Unmarshal err, file = %s", oneCase.fileName)
 			return
 		}
-		appMap, ok := inMap[param.Template.Name]["app"]
+		midMap, ok := inMap[param.Template.Name]
 		if !ok {
 			oneCase.err = perror.Wrapf(herrors.ErrParamInvalid, "value parent err, file = %s, parent = %s",
 				oneCase.fileName, param.Template.Name)
 			return
 		}
-		paramsMap, ok := appMap["params"].(map[interface{}]interface{})
-		if ok {
-			var envsArray []map[interface{}]interface{}
-			for k, v := range paramsMap {
-				envsArray = append(envsArray, map[interface{}]interface{}{
-					"name":  k,
-					"value": v,
-				})
+		// convert params to envs
+		func() {
+			appMap, ok := midMap["app"].(map[string]interface{})
+			if !ok {
+				return
 			}
-			appMap["params"] = envsArray
-		}
-
-		retMap := map[string]map[string]map[string]interface{}{
-			param.TargetRelease.TemplateName: {
-				"app": appMap,
-			},
-		}
+			paramsMap, ok := appMap["params"].(map[string]interface{})
+			if ok {
+				var envsArray []map[string]interface{}
+				for k, v := range paramsMap {
+					envsArray = append(envsArray, map[string]interface{}{
+						"name":  k,
+						"value": v,
+					})
+				}
+				delete(appMap, "params")
+				appMap["envs"] = envsArray
+			}
+		}()
+		retMap := make(map[string]map[string]interface{})
+		retMap[param.TargetRelease.TemplateName] = midMap
 		marshal(&oneCase.out, &oneCase.err, &retMap)
 	}
 	updateValueParent := func(oneCase *upgradeValueBytes) {
 		defer wgUpdateValue.Done()
 
+		if oneCase.in == nil {
+			return
+		}
 		var inMap map[string]interface{}
 		err := yaml.Unmarshal(oneCase.in, &inMap)
 		if err != nil {
@@ -1436,11 +1450,13 @@ func (g *clusterGitRepo) UpgradeValuesFiles(ctx context.Context,
 			if oneCase.err != nil {
 				return "", oneCase.err
 			}
-			gitActions = append(gitActions, gitlablib.CommitAction{
-				Action:   gitlablib.FileUpdate,
-				FilePath: oneCase.fileName,
-				Content:  string(oneCase.out),
-			})
+			if oneCase.in != nil {
+				gitActions = append(gitActions, gitlablib.CommitAction{
+					Action:   gitlablib.FileUpdate,
+					FilePath: oneCase.fileName,
+					Content:  string(oneCase.out),
+				})
+			}
 		} else {
 			if oneCase.err != nil {
 				gitActions = append(gitActions, gitlablib.CommitAction{
@@ -1459,7 +1475,7 @@ func (g *clusterGitRepo) UpgradeValuesFiles(ctx context.Context,
 	}
 	commitMsg := angular.CommitMessage("cluster", angular.Subject{
 		Operator: currentUser.GetName(),
-		Action:   "upgrade cluster to v2",
+		Action:   "upgrade cluster",
 		Cluster:  angular.StringPtr(param.Cluster),
 	}, struct {
 		CurrentTemplate ClusterTemplate `json:"currentTemplate"`
