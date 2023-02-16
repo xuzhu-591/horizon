@@ -697,12 +697,7 @@ func (c *controller) updateTagsAndTemplateFromFile(ctx context.Context,
 	}
 
 	// update db
-	copyOf := func(cluster cmodels.Cluster) cmodels.Cluster {
-		cluster.Template = release.TemplateName
-		cluster.TemplateRelease = release.Name
-		return cluster
-	}(*cluster)
-	_, err = c.clusterMgr.UpdateByID(ctx, cluster.ID, &copyOf)
+	_, err = c.clusterMgr.UpdateTemplateByID(ctx, cluster.ID, release.TemplateName, release.Name)
 	if err != nil {
 		return err
 	}

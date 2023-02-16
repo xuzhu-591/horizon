@@ -58,9 +58,7 @@ func (c *controller) UpgradeToV2(ctx context.Context, clusterID uint) (string, e
 	}
 
 	// 5. update template in db
-	cluster.Template = targetRelease.TemplateName
-	cluster.TemplateRelease = targetRelease.Name
-	_, err = c.clusterMgr.UpdateByID(ctx, clusterID, cluster)
+	_, err = c.clusterMgr.UpdateTemplateByID(ctx, clusterID, targetRelease.TemplateName, targetRelease.Name)
 	if err != nil {
 		return "", err
 	}

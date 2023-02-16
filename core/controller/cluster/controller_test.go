@@ -79,8 +79,11 @@ var (
 	pr                                    *v1beta1.PipelineRun
 	applicationSchema, pipelineSchema     map[string]interface{}
 	pipelineJSONBlob, applicationJSONBlob map[string]interface{}
-	commitGetter                          codemodels.GitGetter
-	applicationSchemaJSON                 = `{
+	manifestV1                            = map[string]interface{}{
+		"version": common.MetaVersion1,
+	}
+	commitGetter          codemodels.GitGetter
+	applicationSchemaJSON = `{
     "type":"object",
     "properties":{
         "app":{
@@ -647,6 +650,7 @@ func test(t *testing.T) {
 		"app-cluster", templateName).Return(&gitrepo.ClusterFiles{
 		PipelineJSONBlob:    pipelineJSONBlob,
 		ApplicationJSONBlob: applicationJSONBlob,
+		Manifest:            manifestV1,
 	}, nil).AnyTimes()
 	clusterGitRepo.EXPECT().GetCluster(ctx, "app",
 		"app-cluster-mergepatch", "javaapp").Return(&gitrepo.ClusterFiles{
@@ -666,6 +670,7 @@ func test(t *testing.T) {
 	}).AnyTimes()
 	imageName := "image"
 	clusterGitRepo.EXPECT().UpdatePipelineOutput(ctx, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("image-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().DefaultBranch().Return("master").AnyTimes()
 	cd.EXPECT().CreateCluster(ctx, gomock.Any()).Return(nil).AnyTimes()
 	cd.EXPECT().Pause(ctx, gomock.Any()).Return(nil).AnyTimes()
 	cd.EXPECT().Resume(ctx, gomock.Any()).Return(nil).AnyTimes()
@@ -1026,6 +1031,11 @@ func test(t *testing.T) {
 	// test rollback
 	clusterGitRepo.EXPECT().Rollback(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
 		Return("rollback-commit", nil).AnyTimes()
+	clusterGitRepo.EXPECT().GetClusterTemplate(ctx, application.Name, resp.Name).
+		Return(&gitrepo.ClusterTemplate{
+			Name:    resp.Template.Name,
+			Release: resp.Template.Release,
+		}, nil).AnyTimes()
 	// update status to 'ok'
 	err = manager.PipelinerunMgr.UpdateResultByID(ctx, buildDeployResp.PipelinerunID, &prmodels.Result{
 		Result: string(prmodels.StatusOK),

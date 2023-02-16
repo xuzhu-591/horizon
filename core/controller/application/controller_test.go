@@ -39,6 +39,9 @@ var (
 
 	applicationSchema, pipelineSchema     map[string]interface{}
 	pipelineJSONBlob, applicationJSONBlob map[string]interface{}
+	manifestV1                            = map[string]interface{}{
+		"version": common.MetaVersion1,
+	}
 
 	appName = "app"
 
@@ -302,14 +305,14 @@ func Test(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	applicationGitRepo := appgitrepomock.NewMockApplicationGitRepo2(mockCtl)
 	applicationGitRepo.EXPECT().CreateOrUpdateApplication(ctx, appName, gitrepo.CreateOrUpdateRequest{
-		Version:      "",
+		Version:      common.MetaVersion1,
 		Environment:  common.ApplicationRepoDefaultEnv,
 		BuildConf:    pipelineJSONBlob,
 		TemplateConf: applicationJSONBlob,
 	}).Return(nil).AnyTimes()
 	applicationGitRepo.EXPECT().HardDeleteApplication(ctx, appName).Return(nil).AnyTimes()
 	applicationGitRepo.EXPECT().GetApplication(ctx, appName, common.ApplicationRepoDefaultEnv).Return(&gitrepo.GetResponse{
-		Manifest:     nil,
+		Manifest:     manifestV1,
 		BuildConf:    pipelineJSONBlob,
 		TemplateConf: applicationJSONBlob,
 	}, nil).AnyTimes()
@@ -441,7 +444,7 @@ func Test(t *testing.T) {
 	assert.Equal(t, getReponsev2.Git, getResponseV1.Git)
 	assert.Equal(t, getReponsev2.BuildConfig, getResponseV1.TemplateInput.Pipeline)
 	assert.Equal(t, getReponsev2.TemplateConfig, getResponseV1.TemplateInput.Application)
-	assert.Nil(t, getReponsev2.Manifest, nil)
+	assert.Equal(t, getReponsev2.Manifest, manifestV1)
 	assert.Equal(t, getReponsev2.FullPath, getResponseV1.FullPath)
 	assert.Equal(t, getReponsev2.GroupID, getResponseV1.GroupID)
 	assert.Equal(t, getReponsev2.CreatedAt, getResponseV1.CreatedAt)
