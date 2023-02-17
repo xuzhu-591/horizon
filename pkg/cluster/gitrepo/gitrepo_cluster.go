@@ -21,6 +21,7 @@ import (
 	trmodels "github.com/horizoncd/horizon/pkg/templaterelease/models"
 	"github.com/horizoncd/horizon/pkg/templaterepo"
 	"github.com/horizoncd/horizon/pkg/util/angular"
+	utilcommon "github.com/horizoncd/horizon/pkg/util/common"
 	"github.com/horizoncd/horizon/pkg/util/log"
 	timeutil "github.com/horizoncd/horizon/pkg/util/time"
 	"github.com/horizoncd/horizon/pkg/util/wlog"
@@ -1066,58 +1067,89 @@ func (g *clusterGitRepo) Rollback(ctx context.Context, application, cluster, com
 
 	pid := fmt.Sprintf("%v/%v/%v", g.clustersGroup.FullPath, application, cluster)
 
-	// 1. get all cluster files of the specified commit
-	readFileParams := []*ReadFileParam{
-		{
-			FileName: common.GitopsFileBase,
-		}, {
-			FileName: common.GitopsFileEnv,
-		}, {
-			FileName: common.GitopsFileApplication,
-		}, {
-			FileName: common.GitopsFileTags,
-		}, {
-			FileName: common.GitopsFileSRE,
-		}, {
-			FileName: common.GitopsFilePipeline,
-		}, {
-			FileName: common.GitopsFilePipelineOutput,
-		}, {
-			FileName: common.GitopsFileChart,
-		}, {
-			FileName: common.GitopsFileRestart,
-		}, {
-			FileName: common.GitopsFileManifest,
-		},
+	// compare commit straight diffs
+	compare, err := g.gitlabLib.Compare(ctx, pid, GitOpsBranch, commit, utilcommon.BoolPtr(true))
+	if err != nil {
+		return "", err
+	}
+	if compare.Diffs == nil {
+		return "", perror.Wrapf(herrors.ErrParamInvalid,
+			"commit dose not support rollback, commit = %s", commit)
 	}
 
-	var wgReadFile sync.WaitGroup
-	wgReadFile.Add(len(readFileParams))
-
-	readFile := func(param *ReadFileParam) {
-		defer wgReadFile.Done()
-		param.Bytes, param.Err = g.gitlabLib.GetFile(ctx, pid, commit, param.FileName)
+	readFile := func(fileName string) ([]byte, error) {
+		return g.gitlabLib.GetFile(ctx, pid, commit, fileName)
 	}
-	for _, param := range readFileParams {
-		go readFile(param)
-	}
-	wgReadFile.Wait()
 
-	// 2. create a commit to do rollback
-	var actions []gitlablib.CommitAction
-	for _, param := range readFileParams {
-		if param.Err != nil {
-			if _, ok := perror.Cause(param.Err).(*herrors.HorizonErrNotFound); ok &&
-				param.FileName == common.GitopsFileManifest {
-				continue
+	var wg sync.WaitGroup
+
+	type actionCase struct {
+		diff   gitlab.Diff
+		action gitlablib.CommitAction
+		err    error
+	}
+
+	revertAction := func(oneCase *actionCase) {
+		defer wg.Done()
+
+		diff := oneCase.diff
+		if diff.DeletedFile {
+			oneCase.action = gitlablib.CommitAction{
+				Action:   gitlablib.FileDelete,
+				FilePath: diff.OldPath,
 			}
-			return "", param.Err
+			return
 		}
-		actions = append(actions, gitlablib.CommitAction{
-			Action:   gitlablib.FileUpdate,
-			FilePath: param.FileName,
-			Content:  string(param.Bytes),
+		if diff.NewFile {
+			file, err := readFile(diff.NewPath)
+			if err != nil {
+				oneCase.err = err
+			} else {
+				oneCase.action = gitlablib.CommitAction{
+					Action:   gitlablib.FileCreate,
+					FilePath: diff.NewPath,
+					Content:  string(file),
+				}
+			}
+			return
+		}
+		if diff.RenamedFile {
+			oneCase.action = gitlablib.CommitAction{
+				Action:       gitlablib.FileMove,
+				FilePath:     diff.NewPath,
+				PreviousPath: diff.OldPath,
+			}
+			return
+		}
+		file, err := readFile(diff.NewPath)
+		if err != nil {
+			oneCase.err = err
+		} else {
+			oneCase.action = gitlablib.CommitAction{
+				Action:   gitlablib.FileUpdate,
+				FilePath: diff.NewPath,
+				Content:  string(file),
+			}
+		}
+	}
+	var cases []*actionCase
+	for _, diff := range compare.Diffs {
+		cases = append(cases, &actionCase{
+			diff: *diff,
 		})
+	}
+
+	wg.Add(len(cases))
+	for _, oneCase := range cases {
+		revertAction(oneCase)
+	}
+
+	var actions []gitlablib.CommitAction
+	for _, oneCase := range cases {
+		if oneCase.err != nil {
+			return "", oneCase.err
+		}
+		actions = append(actions, oneCase.action)
 	}
 
 	commitMsg := angular.CommitMessage("cluster", angular.Subject{
