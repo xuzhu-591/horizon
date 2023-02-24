@@ -56,9 +56,9 @@ type Controller interface {
 	GetSelectableRegionsByEnv(ctx context.Context, id uint, env string) (regionmodels.RegionParts, error)
 
 	CreateApplicationV2(ctx context.Context, groupID uint,
-		request *CreateOrUpdateApplicationRequestV2) (*CreateApplicationResponseV2, error)
+		request *CreateOrUpdateApplicationRequestV2) (*CreateOrUpdateApplicationResponseV2, error)
 	UpdateApplicationV2(ctx context.Context, id uint,
-		request *CreateOrUpdateApplicationRequestV2) (err error)
+		request *CreateOrUpdateApplicationRequestV2) (*CreateOrUpdateApplicationResponseV2, error)
 	// GetApplicationV2 it can also be used to read v1 repo
 	GetApplicationV2(ctx context.Context, id uint) (*GetApplicationResponseV2, error)
 
@@ -301,7 +301,7 @@ func (c *controller) validateBuildAndTemplateConfigV2(ctx context.Context,
 }
 
 func (c *controller) CreateApplicationV2(ctx context.Context, groupID uint,
-	request *CreateOrUpdateApplicationRequestV2) (*CreateApplicationResponseV2, error) {
+	request *CreateOrUpdateApplicationRequestV2) (*CreateOrUpdateApplicationResponseV2, error) {
 	const op = "application controller: create application v2"
 	defer wlog.Start(ctx, op).StopPrint()
 
@@ -370,7 +370,7 @@ func (c *controller) CreateApplicationV2(ctx context.Context, groupID uint,
 		return nil, err
 	}
 
-	ret := &CreateApplicationResponseV2{
+	ret := &CreateOrUpdateApplicationResponseV2{
 		ID:        applicationDBModel.ID,
 		Name:      request.Name,
 		GroupID:   groupID,
@@ -461,29 +461,29 @@ func (c *controller) UpdateApplication(ctx context.Context, id uint,
 }
 
 func (c *controller) UpdateApplicationV2(ctx context.Context, id uint,
-	request *CreateOrUpdateApplicationRequestV2) (err error) {
+	request *CreateOrUpdateApplicationRequestV2) (*CreateOrUpdateApplicationResponseV2, error) {
 	const op = "application controller: update application v2"
 	defer wlog.Start(ctx, op).StopPrint()
 
 	// 1. get application in db
 	appExistsInDB, err := c.applicationMgr.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if request.Priority != nil {
 		if err := validatePriority(*request.Priority); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if request.Git != nil {
 		if err := validateGitURL(request.Git.URL); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if err := c.validateBuildAndTemplateConfigV2(ctx, request); err != nil {
-		return err
+		return nil, err
 	}
 	if (request.TemplateConfig != nil && request.TemplateInfo != nil) || request.BuildConfig != nil {
 		updateRepoReq := gitrepo.CreateOrUpdateRequest{
@@ -493,14 +493,37 @@ func (c *controller) UpdateApplicationV2(ctx context.Context, id uint,
 			TemplateConf: request.TemplateConfig,
 		}
 		if err = c.applicationGitRepo.CreateOrUpdateApplication(ctx, appExistsInDB.Name, updateRepoReq); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// 4. update application in db
 	applicationModel := request.UpdateToApplicationModel(appExistsInDB)
-	_, err = c.applicationMgr.UpdateByID(ctx, id, applicationModel)
-	return err
+	appUpdatedInDB, err := c.applicationMgr.UpdateByID(ctx, id, applicationModel)
+	if err != nil {
+		return nil, err
+	}
+
+	fullPath, err := func() (string, error) {
+		group, err := c.groupSvc.GetChildByID(ctx, appUpdatedInDB.GroupID)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v/%v", group.FullPath, request.Name), nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	return &CreateOrUpdateApplicationResponseV2{
+		ID:        appUpdatedInDB.ID,
+		Name:      appUpdatedInDB.Name,
+		Priority:  string(appUpdatedInDB.Priority),
+		FullPath:  fullPath,
+		GroupID:   appUpdatedInDB.GroupID,
+		CreatedAt: appUpdatedInDB.CreatedAt,
+		UpdatedAt: appUpdatedInDB.UpdatedAt,
+	}, nil
 }
 
 func (c *controller) DeleteApplication(ctx context.Context, id uint, hard bool) (err error) {
@@ -775,7 +798,7 @@ func (c *controller) GetSelectableRegionsByEnv(ctx context.Context, id uint, env
 	return selectableRegionsByEnv, nil
 }
 
-func (c controller) GetApplicationPipelineStats(ctx context.Context, applicationID uint, cluster string,
+func (c *controller) GetApplicationPipelineStats(ctx context.Context, applicationID uint, cluster string,
 	pageNumber, pageSize int) ([]*pipelinemodels.PipelineStats, int64, error) {
 	app, err := c.applicationMgr.GetByID(ctx, applicationID)
 	if err != nil {

@@ -120,7 +120,7 @@ func (req *CreateOrUpdateApplicationRequestV2) UpdateToApplicationModel(
 	return application
 }
 
-type CreateApplicationResponseV2 struct {
+type CreateOrUpdateApplicationResponseV2 struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
 	Priority  string    `json:"priority"`

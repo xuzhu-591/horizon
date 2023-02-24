@@ -96,7 +96,7 @@ func (a *API) Update(c *gin.Context) {
 		response.AbortWithRPCError(c, rpcerror.ParamError.WithErrMsg(err.Error()))
 		return
 	}
-	err = a.applicationCtl.UpdateApplicationV2(c, uint(appID), request)
+	resp, err := a.applicationCtl.UpdateApplicationV2(c, uint(appID), request)
 	if err != nil {
 		if e, ok := perror.Cause(err).(*herrors.HorizonErrNotFound); ok {
 			if e.Source == herrors.ApplicationInDB {
@@ -111,7 +111,7 @@ func (a *API) Update(c *gin.Context) {
 		response.AbortWithRPCError(c, rpcerror.InternalError.WithErrMsg(err.Error()))
 		return
 	}
-	response.Success(c)
+	response.SuccessWithData(c, resp)
 }
 
 func (a *API) Get(c *gin.Context) {
