@@ -506,7 +506,7 @@ func (c *controller) UpdateClusterV2(ctx context.Context, clusterID uint,
 		return info.Validate(ctx, c.templateSchemaGetter, renderValues, c.buildSchema)
 	}()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// 6. update in git repo
@@ -569,7 +569,7 @@ func (info *BuildTemplateInfo) Validate(ctx context.Context,
 		return err
 	}
 
-	if buildSchema != nil && info.BuildConfig != nil {
+	if buildSchema != nil && info.BuildConfig != nil && len(info.BuildConfig) > 0 {
 		err = jsonschema.Validate(buildSchema.JSONSchema, info.BuildConfig, false)
 		if err != nil {
 			return err
