@@ -224,6 +224,10 @@ func (c *controller) Deploy(ctx context.Context, clusterID uint,
 	case codemodels.GitRefTypeBranch:
 		prGit.Branch = prCreated.GitRef
 	}
+	pipelineJSONBlob := make(map[string]interface{})
+	if clusterFiles.PipelineJSONBlob != nil {
+		pipelineJSONBlob = clusterFiles.PipelineJSONBlob
+	}
 	tektonClient, err := c.tektonFty.GetTekton(cluster.EnvironmentName)
 	if err != nil {
 		return nil, err
@@ -240,7 +244,7 @@ func (c *controller) Deploy(ctx context.Context, clusterID uint,
 		ImageURL:         cluster.Image,
 		Operator:         currentUser.GetEmail(),
 		PipelinerunID:    prCreated.ID,
-		PipelineJSONBlob: clusterFiles.PipelineJSONBlob,
+		PipelineJSONBlob: pipelineJSONBlob,
 		Region:           cluster.RegionName,
 		RegionID:         regionEntity.ID,
 		Template:         cluster.Template,
