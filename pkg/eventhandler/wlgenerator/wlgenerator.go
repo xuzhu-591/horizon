@@ -174,15 +174,11 @@ func (w *WebhookLogGenerator) listAssociatedResourcesOfPipelinerun(ctx context.C
 			id)
 		return nil, nil, nil
 	}
-	cluster, err := w.clusterMgr.GetByIDIncludeSoftDelete(ctx, pr.ClusterID)
-	if err != nil {
-		log.Warningf(ctx, "cluster %d is not exist",
-			id)
-		return nil, nil, nil
+	cluster, _, resources := w.listAssociatedResourcesOfCluster(ctx, pr.ClusterID)
+	if resources == nil {
+		resources = map[string][]uint{}
 	}
-	resources := map[string][]uint{}
 	resources[common.ResourcePipelinerun] = []uint{pr.ID}
-	resources[common.ResourceCluster] = []uint{cluster.ID}
 	return pr, cluster, resources
 }
 
@@ -209,6 +205,7 @@ func (w *WebhookLogGenerator) listAssociatedResources(ctx context.Context,
 		pr, cluster, resources = w.listAssociatedResourcesOfPipelinerun(ctx, e.ResourceID)
 		dep.cluster = cluster
 		dep.pipelinerun = pr
+		log.Debugf(ctx, "dep: %+v", dep)
 	default:
 		log.Infof(ctx, "resource type %s is unsupported",
 			e.ResourceType)
@@ -333,6 +330,7 @@ func (w *WebhookLogGenerator) Process(ctx context.Context, events []*models.Even
 			} else if !ok {
 				continue
 			}
+			log.Debugf(ctx, "event %d matches webhook %d", event.ID, webhook.URL)
 			// 3.2 add webhook to the list
 			if _, ok := conditionsToCreate[event.ID]; !ok {
 				conditionsToCreate[event.ID] = map[uint]messageDependency{}
