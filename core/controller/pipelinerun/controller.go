@@ -62,7 +62,7 @@ type Controller interface {
 	StopPipelinerunForCluster(ctx context.Context, clusterID uint) error
 
 	CreateCheck(ctx context.Context, check *models.Check) (*models.Check, error)
-	UpdateCheckRunByID(ctx context.Context, checkRunID uint, newCheckRun *models.CheckRun) error
+	UpdateCheckRunByID(ctx context.Context, checkRunID uint, request *CreateOrUpdateCheckRunRequest) error
 
 	ListMessagesByPipelinerun(ctx context.Context, pipelinerunID uint, query *q.Query) (int, []*models.PRMessage, error)
 	// Execute runs a pipelineRun only if its state is ready.
@@ -71,7 +71,7 @@ type Controller interface {
 	Cancel(ctx context.Context, pipelinerunID uint) error
 
 	ListCheckRuns(ctx context.Context, pipelineRunID uint) ([]*models.CheckRun, error)
-	CreateCheckRun(ctx context.Context, pipelineRunID uint, request *CreateCheckRunRequest) (*models.CheckRun, error)
+	CreateCheckRun(ctx context.Context, pipelineRunID uint, request *CreateOrUpdateCheckRunRequest) (*models.CheckRun, error)
 	ListPRMessages(ctx context.Context, pipelineRunID uint, q *q.Query) (int, []*PrMessage, error)
 	CreatePRMessage(ctx context.Context, pipelineRunID uint, request *CreatePrMessageRequest) (*models.PRMessage, error)
 }
@@ -335,11 +335,16 @@ func (c *controller) CreateCheck(ctx context.Context, check *models.Check) (*mod
 	return c.prMgr.Check.Create(ctx, check)
 }
 
-func (c *controller) UpdateCheckRunByID(ctx context.Context, checkRunID uint, newCheckRun *models.CheckRun) error {
+func (c *controller) UpdateCheckRunByID(ctx context.Context, checkRunID uint, request *CreateOrUpdateCheckRunRequest) error {
 	const op = "pipelinerun controller: update check run"
 	defer wlog.Start(ctx, op).StopPrint()
 
-	return c.prMgr.Check.UpdateByID(ctx, checkRunID, newCheckRun)
+	return c.prMgr.Check.UpdateByID(ctx, checkRunID, &models.CheckRun{
+		Name:      request.Name,
+		Status:    models.String2CheckRunStatus(request.Status),
+		Message:   request.Message,
+		DetailURL: request.DetailURL,
+	})
 }
 
 func (c *controller) ListMessagesByPipelinerun(ctx context.Context,
@@ -489,7 +494,7 @@ func (c *controller) ListCheckRuns(ctx context.Context, pipelineRunID uint) ([]*
 }
 
 func (c *controller) CreateCheckRun(ctx context.Context, pipelineRunID uint,
-	request *CreateCheckRunRequest) (*models.CheckRun, error) {
+	request *CreateOrUpdateCheckRunRequest) (*models.CheckRun, error) {
 	const op = "pipelinerun controller: create check run"
 	defer wlog.Start(context.Background(), op).StopPrint()
 

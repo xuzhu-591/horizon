@@ -539,7 +539,7 @@ func TestCheckRun(t *testing.T) {
 		prMgr: param.PRMgr,
 	}
 
-	_, err := ctrl.CreateCheckRun(ctx, 1, &CreateCheckRunRequest{
+	_, err := ctrl.CreateCheckRun(ctx, 1, &CreateOrUpdateCheckRunRequest{
 		Name:      "test",
 		Status:    string(prmodels.CheckStatusQueue),
 		Message:   "hello",

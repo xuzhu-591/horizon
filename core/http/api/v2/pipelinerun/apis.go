@@ -34,6 +34,7 @@ import (
 
 const (
 	_pipelinerunIDParam = "pipelinerunID"
+	_checkrunIDParam    = "checkrunID"
 	_clusterIDParam     = "clusterID"
 	_canRollbackParam   = "canRollback"
 	_pipelineStatus     = "status"
@@ -214,7 +215,7 @@ func (a *API) ListCheckRuns(c *gin.Context) {
 }
 
 func (a *API) CreateCheckRuns(c *gin.Context) {
-	var req prctl.CreateCheckRunRequest
+	var req prctl.CreateOrUpdateCheckRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
 		return
@@ -226,6 +227,22 @@ func (a *API) CreateCheckRuns(c *gin.Context) {
 			return
 		}
 		response.SuccessWithData(c, checkrun)
+	})
+}
+
+func (a *API) UpdateCheckRuns(c *gin.Context) {
+	var req prctl.CreateOrUpdateCheckRunRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
+		return
+	}
+	a.withID(c, func(prID uint) {
+		err := a.prCtl.UpdateCheckRunByID(c, prID, &req)
+		if err != nil {
+			response.AbortWithError(c, err)
+			return
+		}
+		response.Success(c)
 	})
 }
 
