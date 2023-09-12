@@ -62,6 +62,7 @@ type Controller interface {
 	StopPipelinerunForCluster(ctx context.Context, clusterID uint) error
 
 	CreateCheck(ctx context.Context, check *models.Check) (*models.Check, error)
+	GetCheckRunByID(ctx context.Context, checkRunID uint) (*models.CheckRun, error)
 	UpdateCheckRunByID(ctx context.Context, checkRunID uint, request *CreateOrUpdateCheckRunRequest) error
 
 	ListMessagesByPipelinerun(ctx context.Context, pipelinerunID uint, query *q.Query) (int, []*models.PRMessage, error)
@@ -70,7 +71,7 @@ type Controller interface {
 	// Cancel withdraws a pipelineRun only if its state is pending.
 	Cancel(ctx context.Context, pipelinerunID uint) error
 
-	ListCheckRuns(ctx context.Context, pipelineRunID uint) ([]*models.CheckRun, error)
+	ListCheckRuns(ctx context.Context, q *q.Query) ([]*models.CheckRun, error)
 	CreateCheckRun(ctx context.Context, pipelineRunID uint, request *CreateOrUpdateCheckRunRequest) (*models.CheckRun, error)
 	ListPRMessages(ctx context.Context, pipelineRunID uint, q *q.Query) (int, []*PrMessage, error)
 	CreatePRMessage(ctx context.Context, pipelineRunID uint, request *CreatePrMessageRequest) (*models.PRMessage, error)
@@ -487,10 +488,16 @@ func (c *controller) Cancel(ctx context.Context, pipelinerunID uint) error {
 	return c.prMgr.PipelineRun.UpdateStatusByID(ctx, pipelinerunID, prmodels.StatusCancelled)
 }
 
-func (c *controller) ListCheckRuns(ctx context.Context, pipelineRunID uint) ([]*models.CheckRun, error) {
+func (c *controller) ListCheckRuns(ctx context.Context, query *q.Query) ([]*models.CheckRun, error) {
 	const op = "pipelinerun controller: list check runs"
 	defer wlog.Start(context.Background(), op).StopPrint()
-	return c.prMgr.Check.ListCheckRuns(ctx, pipelineRunID)
+	return c.prMgr.Check.ListCheckRuns(ctx, query)
+}
+
+func (c *controller) GetCheckRunByID(ctx context.Context, checkRunID uint) (*models.CheckRun, error) {
+	const op = "pipelinerun controller: get check run by id"
+	defer wlog.Start(context.Background(), op).StopPrint()
+	return c.prMgr.Check.GetCheckRunByID(ctx, checkRunID)
 }
 
 func (c *controller) CreateCheckRun(ctx context.Context, pipelineRunID uint,

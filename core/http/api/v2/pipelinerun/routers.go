@@ -65,19 +65,24 @@ func (api *API) RegisterRoute(engine *gin.Engine) {
 			HandlerFunc: api.Cancel,
 		},
 		{
-			Method:      http.MethodGet,
-			Pattern:     fmt.Sprintf("/pipelineruns/:%v/checkrun", _pipelinerunIDParam),
-			HandlerFunc: api.ListCheckRuns,
-		},
-		{
 			Method:      http.MethodPost,
 			Pattern:     fmt.Sprintf("/pipelineruns/:%v/checkrun", _pipelinerunIDParam),
-			HandlerFunc: api.CreateCheckRuns,
+			HandlerFunc: api.CreateCheckRun,
+		},
+		{
+			Method:      http.MethodGet,
+			Pattern:     fmt.Sprintf("/checkruns/:%v", _checkrunIDParam),
+			HandlerFunc: api.GetCheckRun,
+		},
+		{
+			Method:      http.MethodGet,
+			Pattern:     fmt.Sprintf("/checkruns"),
+			HandlerFunc: api.ListCheckRuns,
 		},
 		{
 			Method:      http.MethodPut,
 			Pattern:     fmt.Sprintf("/checkruns/:%v", _checkrunIDParam),
-			HandlerFunc: api.UpdateCheckRuns,
+			HandlerFunc: api.UpdateCheckRun,
 		},
 		{
 			Method:      http.MethodGet,

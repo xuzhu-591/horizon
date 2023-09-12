@@ -51,7 +51,7 @@ func NewAPI(prCtl prctl.Controller) *API {
 }
 
 func (a *API) Log(c *gin.Context) {
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		l, err := a.prCtl.GetPipelinerunLog(c, uint(prID))
 		if err != nil {
 			l := &collector.Log{
@@ -96,7 +96,7 @@ func (a *API) writeLog(c *gin.Context, l *collector.Log) {
 }
 
 func (a *API) GetDiff(c *gin.Context) {
-	a.withID(c, func(pipelinerunID uint) {
+	a.withPipelinerunID(c, func(pipelinerunID uint) {
 		diff, err := a.prCtl.GetDiff(c, uint(pipelinerunID))
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -107,7 +107,7 @@ func (a *API) GetDiff(c *gin.Context) {
 }
 
 func (a *API) Get(c *gin.Context) {
-	a.withID(c, func(pipelinerunID uint) {
+	a.withPipelinerunID(c, func(pipelinerunID uint) {
 		resp, err := a.prCtl.GetPipelinerun(c, uint(pipelinerunID))
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -159,7 +159,7 @@ func (a *API) List(c *gin.Context) {
 }
 
 func (a *API) Stop(c *gin.Context) {
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		err := a.prCtl.StopPipelinerun(c, uint(prID))
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -178,7 +178,7 @@ func (a *API) Execute(c *gin.Context) {
 }
 
 func (a *API) execute(c *gin.Context, force bool) {
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		err := a.prCtl.Execute(c, prID, force)
 		if err != nil {
 			if e, ok := perror.Cause(err).(*herrors.HorizonErrNotFound); ok {
@@ -193,7 +193,7 @@ func (a *API) execute(c *gin.Context, force bool) {
 }
 
 func (a *API) Cancel(c *gin.Context) {
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		err := a.prCtl.Cancel(c, prID)
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -204,23 +204,23 @@ func (a *API) Cancel(c *gin.Context) {
 }
 
 func (a *API) ListCheckRuns(c *gin.Context) {
-	a.withID(c, func(prID uint) {
-		checkRuns, err := a.prCtl.ListCheckRuns(c, prID)
-		if err != nil {
-			response.AbortWithError(c, err)
-			return
-		}
-		response.SuccessWithData(c, checkRuns)
-	})
+	query := parseContext(c)
+	checkRuns, err := a.prCtl.ListCheckRuns(c, query)
+	if err != nil {
+		response.AbortWithError(c, err)
+		return
+	}
+	response.SuccessWithData(c, checkRuns)
+
 }
 
-func (a *API) CreateCheckRuns(c *gin.Context) {
+func (a *API) CreateCheckRun(c *gin.Context) {
 	var req prctl.CreateOrUpdateCheckRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
 		return
 	}
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		checkrun, err := a.prCtl.CreateCheckRun(c, prID, &req)
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -230,14 +230,25 @@ func (a *API) CreateCheckRuns(c *gin.Context) {
 	})
 }
 
-func (a *API) UpdateCheckRuns(c *gin.Context) {
+func (a *API) GetCheckRun(c *gin.Context) {
+	a.withCheckrunID(c, func(id uint) {
+		checkrun, err := a.prCtl.GetCheckRunByID(c, id)
+		if err != nil {
+			response.AbortWithError(c, err)
+			return
+		}
+		response.SuccessWithData(c, checkrun)
+	})
+}
+
+func (a *API) UpdateCheckRun(c *gin.Context) {
 	var req prctl.CreateOrUpdateCheckRunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
 		return
 	}
-	a.withID(c, func(prID uint) {
-		err := a.prCtl.UpdateCheckRunByID(c, prID, &req)
+	a.withCheckrunID(c, func(id uint) {
+		err := a.prCtl.UpdateCheckRunByID(c, id, &req)
 		if err != nil {
 			response.AbortWithError(c, err)
 			return
@@ -253,7 +264,7 @@ func (a *API) CreatePrMessage(c *gin.Context) {
 		return
 	}
 
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		checkMessage, err := a.prCtl.CreatePRMessage(c, prID, &req)
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -273,7 +284,7 @@ func (a *API) ListPrMessages(c *gin.Context) {
 		PageNumber: pageNumber,
 		PageSize:   pageSize,
 	}
-	a.withID(c, func(prID uint) {
+	a.withPipelinerunID(c, func(prID uint) {
 		count, messages, err := a.prCtl.ListPRMessages(c, prID, query)
 		if err != nil {
 			response.AbortWithError(c, err)
@@ -286,7 +297,7 @@ func (a *API) ListPrMessages(c *gin.Context) {
 	})
 }
 
-func (a *API) withID(c *gin.Context, f func(pipelineRunID uint)) {
+func (a *API) withPipelinerunID(c *gin.Context, f func(pipelineRunID uint)) {
 	idStr := c.Param(_pipelinerunIDParam)
 	id, err := strconv.ParseUint(idStr, 10, 0)
 	if err != nil {
@@ -294,4 +305,54 @@ func (a *API) withID(c *gin.Context, f func(pipelineRunID uint)) {
 		return
 	}
 	f(uint(id))
+}
+
+func (a *API) withCheckrunID(c *gin.Context, f func(pipelineRunID uint)) {
+	idStr := c.Param(_checkrunIDParam)
+	id, err := strconv.ParseUint(idStr, 10, 0)
+	if err != nil {
+		response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
+		return
+	}
+	f(uint(id))
+}
+
+func parseContext(c *gin.Context) *q.Query {
+	keywords := make(map[string]interface{})
+
+	filter := c.Query(common.CheckrunQueryFilter)
+	if filter != "" {
+		keywords[common.CheckrunQueryFilter] = filter
+	}
+
+	status := c.Param(common.CheckrunQueryByStatus)
+	if status != "" {
+		keywords[common.CheckrunQueryByStatus] = status
+	}
+
+	pipelinerunIDStr := c.Param(common.CheckrunQueryByPipelinerunID)
+	if pipelinerunIDStr != "" {
+		pipelinerunID, err := strconv.ParseUint(pipelinerunIDStr, 10, 0)
+		if err != nil {
+			response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
+			return nil
+		}
+		keywords[common.ParamApplicationID] = pipelinerunID
+	}
+
+	checkIDStr := c.Param(common.CheckrunQueryByCheckID)
+	if checkIDStr != "" {
+		checkID, err := strconv.ParseUint(checkIDStr, 10, 0)
+		if err != nil {
+			response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
+			return nil
+		}
+		keywords[common.CheckrunQueryByCheckID] = checkID
+	}
+
+	detailURL := c.Param(common.CheckrunQueryByDetailURL)
+	if detailURL != "" {
+		keywords[common.CheckrunQueryByDetailURL] = detailURL
+	}
+	return q.New(keywords)
 }
