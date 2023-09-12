@@ -325,22 +325,22 @@ func parseContext(c *gin.Context) *q.Query {
 		keywords[common.CheckrunQueryFilter] = filter
 	}
 
-	status := c.Param(common.CheckrunQueryByStatus)
+	status := c.Query(common.CheckrunQueryByStatus)
 	if status != "" {
 		keywords[common.CheckrunQueryByStatus] = status
 	}
 
-	pipelinerunIDStr := c.Param(common.CheckrunQueryByPipelinerunID)
+	pipelinerunIDStr := c.Query(common.CheckrunQueryByPipelinerunID)
 	if pipelinerunIDStr != "" {
 		pipelinerunID, err := strconv.ParseUint(pipelinerunIDStr, 10, 0)
 		if err != nil {
 			response.AbortWithRequestError(c, common.InvalidRequestParam, err.Error())
 			return nil
 		}
-		keywords[common.ParamApplicationID] = pipelinerunID
+		keywords[common.CheckrunQueryByPipelinerunID] = pipelinerunID
 	}
 
-	checkIDStr := c.Param(common.CheckrunQueryByCheckID)
+	checkIDStr := c.Query(common.CheckrunQueryByCheckID)
 	if checkIDStr != "" {
 		checkID, err := strconv.ParseUint(checkIDStr, 10, 0)
 		if err != nil {
@@ -350,7 +350,7 @@ func parseContext(c *gin.Context) *q.Query {
 		keywords[common.CheckrunQueryByCheckID] = checkID
 	}
 
-	detailURL := c.Param(common.CheckrunQueryByDetailURL)
+	detailURL := c.Query(common.CheckrunQueryByDetailURL)
 	if detailURL != "" {
 		keywords[common.CheckrunQueryByDetailURL] = detailURL
 	}

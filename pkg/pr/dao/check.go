@@ -77,7 +77,7 @@ func (d *checkDAO) ListCheckRuns(ctx context.Context, query *q.Query) ([]*models
 	var checkRuns []*models.CheckRun
 
 	statement := d.db.WithContext(ctx)
-	if query == nil {
+	if query != nil {
 		for k, v := range query.Keywords {
 			switch k {
 			case common.CheckrunQueryFilter:
@@ -94,7 +94,7 @@ func (d *checkDAO) ListCheckRuns(ctx context.Context, query *q.Query) ([]*models
 			}
 		}
 	}
-	result := statement.Find(&checkRuns)
+	result := statement.Debug().Find(&checkRuns)
 
 	if result.RowsAffected == 0 {
 		return []*models.CheckRun{}, nil
