@@ -89,8 +89,6 @@ func (d *checkDAO) ListCheckRuns(ctx context.Context, query *q.Query) ([]*models
 				statement = statement.Where("pipeline_run_id = ?", v)
 			case common.CheckrunQueryByCheckID:
 				statement = statement.Where("check_id = ?", v)
-			case common.CheckrunQueryByDetailURL:
-				statement = statement.Where("detail_url = ?", v)
 			}
 		}
 	}

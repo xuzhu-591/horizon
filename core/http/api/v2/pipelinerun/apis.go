@@ -349,10 +349,5 @@ func parseContext(c *gin.Context) *q.Query {
 		}
 		keywords[common.CheckrunQueryByCheckID] = checkID
 	}
-
-	detailURL := c.Query(common.CheckrunQueryByDetailURL)
-	if detailURL != "" {
-		keywords[common.CheckrunQueryByDetailURL] = detailURL
-	}
 	return q.New(keywords)
 }
