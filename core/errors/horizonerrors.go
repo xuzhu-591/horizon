@@ -209,7 +209,7 @@ var (
 	ErrGenerateRandomID = errors.New("failed to generate random id")
 	ErrDisabled         = errors.New("entity is disabled")
 	ErrDuplicatedKey    = errors.New("duplicated keys")
-	// ErrInternal = errors.New("internal error")
+	ErrValidatingFailed = errors.New("validating failed")
 
 	// http
 	ErrHTTPRespNotAsExpected = errors.New("http response is not as expected")
